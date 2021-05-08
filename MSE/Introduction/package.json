@@ -7,7 +7,7 @@
     "lib": "lib"
   },
   "scripts": {
-    "start": "parcel index.html assets/**/*",
+    "start": "rm -rf .cache && parcel index.html assets/**/*",
     "build": "rm -rf example && parcel build index.html assets/**/* -d example --public-url ./"
   },
   "author": "shushushu",
