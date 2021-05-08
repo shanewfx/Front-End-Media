@@ -138,11 +138,15 @@ if (!MediaSource.isTypeSupported(mime)) {
 `xxx` 是你本地的媒体文件，我这边分别用 `lol.mp4` 和 `big-buck-bunny.webm` 两个文件进行测试：
 
 👉 `ffmpeg -i lol.mp4 -c copy -f dash index.mpd`
+
 👇
+
 ![image.png](https://github.com/shushushv/Front-End-Media/blob/master/MSE/Introduction/docs/lol-dash.png)
 
 👉 `ffmpeg -i big-buck-bunny.webm -c copy -f dash index.mpd`
+
 👇
+
 ![image.png](https://github.com/shushushv/Front-End-Media/blob/master/MSE/Introduction/docs/big-buck-bunny-dash.png)
 
 从测试结果可以看出，都是生成了 `init-xxx.xx` 、 `chunk-xxx-xxx.xx` 的文件，
@@ -159,6 +163,7 @@ if (!MediaSource.isTypeSupported(mime)) {
 ## EXAMPLE
 
 👇
+
 ![example.gif](https://github.com/shushushv/Front-End-Media/blob/master/MSE/Introduction/docs/example.gif)
 
 [🖥 在线Demo 🌰](https://shushushv.github.io/Front-End-Media/MSE/Introduction/example/)
