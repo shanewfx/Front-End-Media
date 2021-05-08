@@ -35,8 +35,8 @@ const App = () => {
     });
   }, [player, num]);
 
-  const trigger = (eventName: string, extra?: string) => {
-    logger.info(`video trigger event "${eventName}" ${extra}`);
+  const trigger = (eventName: string, ...args: any[]) => {
+    logger.info(`video trigger event "${eventName}" ${args.join(' ')}`);
   }
 
   return <>
