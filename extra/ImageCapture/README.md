@@ -1,5 +1,7 @@
 # 视频截图/抓拍
 
+[🌰](https://shushushv.github.io/Front-End-Media/extra/ImageCapture/example/)
+
 ## canvas 截图
 
 借助 canvas 的 `drawImage` 、`toDataURL` 方法对 `<video>` 进行截图。
