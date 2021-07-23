@@ -11,7 +11,9 @@ yarn start
 yarn build
 ```
 
-# 前言
+# MSE 入门
+
+## 前言
 
 流媒体协议多种多样，音视频编码格式更是繁多，要想在浏览器中正常浏览并非不容易。除开 WebRTC 这种浏览器已经支持的协议，HLS、FLV、RTSP、RTMP、DASH 等协议都需要预处理，不过流程大致都是：
 
@@ -22,7 +24,7 @@ yarn build
 
 目前市面上也有一些前端解码的方案，如借助 `WASM` 的高性能调用 c 解码库，或者直接使用浏览器的 `WebCodecs API` 进行编解码......但都存在局限性，`WebCodecs` 仍是实验性功能；而 `WASM` 方案虽然突破浏览器沙盒限制（能播放浏览器不支持的编码格式如H265等），但解码和浏览器原始解码之间仍有差距，并且由于只能走软解导致多路性能也吃不消。所以，市面上更多的是采用另一种方式，解协议+封装+这篇文章的主角 [Media Source Extensions](https://developer.mozilla.org/zh-CN/docs/Web/API/Media_Source_Extensions_API)（以下简称MSE）。
 
-# 开始
+## 开始
 
 HTML5 规范允许我们直接在网页中嵌入视频,
 ```html
@@ -55,7 +57,7 @@ mediaSource.addEventListener('sourceopen', () => {
 
 此时，视频就可以正常播放了。要想做到流式播放，只需要不停的调用 `appendBuffer` 喂音视频数据就行了......但不禁有疑问， `'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'` 这段字符串什么意思？音视频数据又要从哪来的？🤔
 
-## MIME TYPE
+### MIME TYPE
 ```javascript
 // webm MIME-type
 'video/webm;codecs="vp8,vorbis"'
@@ -113,7 +115,7 @@ if (!MediaSource.isTypeSupported(mime)) {
 }
 ```
 
-## Media Segment
+### Media Segment
 `SourceBuffer.appendBuffer(source)` 旨在将媒体片段数据 `source` 添加到 [SourceBuffer](https://developer.mozilla.org/zh-CN/docs/Web/API/SourceBuffer) 对象中，看 [MDN](https://developer.mozilla.org/zh-CN/docs/Web/API/SourceBuffer/appendBuffer#parameters) 上对 `source` 的描述：
 
 > 一个 BufferSource (en-US) 对象（ArrayBufferView 或 ArrayBuffer），存储了你要添加到 SourceBuffer 中去的媒体片段数据。
@@ -160,7 +162,7 @@ if (!MediaSource.isTypeSupported(mime)) {
 
 跟 [ISO BMFF](https://www.w3.org/TR/mse-byte-stream-format-isobmff/#iso-init-segments) 描述一致，初始化分片由 `ftyp box` + `moov box` 组成；媒体分片 `styp box`、`sidx box`、`moof box`、`mdat box` 组成，想要了解各种盒子的含义可以前往 [学好 MP4，让直播更给力](https://segmentfault.com/a/1190000010776938) 学习。
 
-## EXAMPLE
+### EXAMPLE
 
 👇
 
