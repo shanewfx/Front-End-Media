@@ -1,6 +1,6 @@
 # 视频截图/抓拍
 
-[🌰](https://shushushv.github.io/Front-End-Media/extra/ImageCapture/example/)
+[🌰 🔗](https://shushushv.github.io/Front-End-Media/extra/ImageCapture/example/)
 
 ## canvas 截图
 
