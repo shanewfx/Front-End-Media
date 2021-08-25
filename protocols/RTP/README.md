@@ -43,7 +43,7 @@
 
 - defined by profile：自定义扩展报头标识符，占16位，根据配置文件规范定义。
 - length：用于计算后续扩展中 32 位的长度，占16位，不包括扩展头中的4个字节（因此 0 是有效长度）。
-- header extension：扩展头数据，长度为 length *  4 位。
+- header extension：扩展头数据，长度为 length *  4 字节。
 
 ## code
 ```typescript
@@ -101,7 +101,7 @@ export default class RTP {
     // 扩展头解析
     if (this.extension === 1) {
       const identifier = bytes.getUint16(offset);
-       // 单位字节，长度域指的是扩展项中的32bit字的个数，所以要*4->byte
+       // 单位字节，长度指扩展项中的32bit的个数，所以要*4
       const length = bytes.getUint16(offset + 2) * 4;
       offset += 4;
       this.headerExtension = {
