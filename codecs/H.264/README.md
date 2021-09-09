@@ -6,7 +6,21 @@
 **H.264**，同时也是MPEG-4第十部分，是由ITU-T视频编码专家组（VCEG）和ISO/IEC动态图像专家组（MPEG）联合组成的联合视频组（JVT，Joint Video Team）提出的高度压缩数字视频编解码器标准。这个标准通常被称之为 `H.264/AVC`（或者AVC/H.264或者H.264/MPEG-4 AVC或MPEG-4/H.264 AVC）。
 
 ## 2、H264 编码分层
-`H.264` 被分为 `视频编码层（Video Coding Layer, VCL）` 和 `网络抽象层（Network Abstraction Layer, NAL）`。前者 `VCL` 关注编码部分，重点在于编码算法以及在特定硬件平台的实现；而后者 `NAL` 负责格式化数据以及包封装，以保证数据在各种信道和存储介质上的传输。涉及的概念：
+`H.264` 被分为 `视频编码层（Video Coding Layer, VCL）` 和 `网络抽象层（Network Abstraction Layer, NAL）`。前者 `VCL` 关注编码部分，重点在于编码算法以及在特定硬件平台的实现；而后者 `NAL` 负责格式化数据以及包封装，以保证数据在各种信道和存储介质上的传输。
+
+`视频编码层`涉及的概念：
+
+- **视频压缩技术**：
+  - 帧内预测压缩，解决的是空域数据冗余问题。
+  - 帧间预测压缩（运动估计与补偿），解决的是时域数据冗徐问题。
+  - 整数离散余弦变换（DCT），将空间上的相关性变为频域上无关的数据然后进行量化。
+  - CABAC 压缩。
+- **I帧**：关键帧，采用帧内压缩技术。
+- **P帧**：向前参考帧，在压缩时，只参考前面已经处理的帧。采用帧间压缩技术。
+- **B帧**：双向参考帧，在压缩时，它即参考前面的帧，又参考它后面的帧。采用帧间压缩技术。
+- **GOP**：两个I帧之间是一个图像序列；一个图像序列中只有一个I帧。
+
+`网络抽象层`涉及的概念：
 
 - **SODB**：数据比特串（String Of Data Bits），即 `VCL` 编码后的最原始的数据（长度不一定是8的整数，故需补齐）。
 - **RBSP**：原始数据字节流（Raw Byte Sequence Payload），即在 SODB 的后面添加了 `rbsp_trailing_bits`（第一个比特为1，接下来是0，直到字节对齐）。
@@ -24,10 +38,13 @@ mixin(RBSP, 0x03) = EBSP
 
 NALU header + NALU body(RBSP or EBSP) = NALU
 
-NALU Start Codes + NALU + NALU Start Codes + NALU + ... = H.264 Bits Stream
+NALU Start Codes + NALU + NALU Start Codes + NALU + ... = H.264 Bits Stream       // Annex-B
 ```
 
-## 3、NAL 单元结构
+## 3、视频编码
+TODO
+
+## 4、NAL 单元结构
 > 规定VCL是为了有效的表示视频数据的内容。规定NAL则是为了格式化数据，并以适用于存储介质或在多种通信信道上传输的格式提供头信息。NAL单元中包含了所有数据，每个NAL单元都是包含整数字节。NAL单元规定一种既适用于分组系统又适用于比特流系统的通用格式。用于分组传输和字节流的NAL单元的格式是一样的，不过字节流格式中的每个NAL单元前可以有一个起始码前缀和额外填充字节。
 
 NAL 单元（简称 NALU）包含 NAL 头和 NAL 主体，其中 NAL 头占一个字节，结构如下：
@@ -71,7 +88,7 @@ NALU 的类型，主要分为两类：1～5的NALU称为 VCL NALU（即视频编
 - ![nalu.jpg](./docs/images/h264_nalu.jpg)
 - 黄色部分为 `0x00000001` 开始码，蓝色部分为 NALU header，`0x67` 为 SPS 信息，红色部分为 NALU body（其中有两个防竞争码）。
 
-## 4、H.264 基于 RTP 的传输结构
+## 5、H.264 基于 RTP 的传输结构
 ```
 +----------------------+
 |      RTP Packet      |
@@ -110,7 +127,7 @@ RTP 是实时传输协议，通过该协议打包 H.264 码流时，定义了三
 
 三种载荷类型分别为：
 
-### 4.1、Single NAL Unit Packet
+### 5.1、Single NAL Unit Packet
 [单一NALU包](https://datatracker.ietf.org/doc/html/rfc3984#section-5.6)，即每个 NALU 都会被独立封装成一个 RTP 包。RTP 载荷结构如下：
 ```
  0                   1                   2                   3
@@ -127,7 +144,7 @@ RTP 是实时传输协议，通过该协议打包 H.264 码流时，定义了三
           RTP payload format for single NAL unit packet
 ```
 
-### 4.2、Aggregation Packets
+### 5.2、Aggregation Packets
 [聚合包](https://datatracker.ietf.org/doc/html/rfc3984#section-5.7)。当 H264 码流中有若干 NALU 尺寸特别小，因此需要将多个 NALU 封装到一个 RTP 包中。RTP 的载荷结构如下：
 ```
  0                   1                   2                   3
@@ -229,7 +246,7 @@ RTP 是实时传输协议，通过该协议打包 H.264 码流时，定义了三
                   图4 MTAP24 的多时间聚合单元格式
 ```
 
-### 4.3、Fragmentation Units (FUs)
+### 5.3、Fragmentation Units (FUs)
 分片单元。当 H264 码流中的 NALU 长度超过 MTU 大小限制时，需要进行分片。FUs 分为两类：FU-A（图5） 和 FU-B（图6），区别是 FU-B 携带了 DON 。其中 `FU indicator` 与 NULU header 的结构一致，type 为 28 或 29；`FU header` 的构成如图7所示，第一位 `S`（start）表示是否为开始分片，`E`（end）表示是否为结束分片，`R`（reserved）必须为0，5位的 `type` 表示 NALU 单元的类型。
 
 ```
@@ -269,6 +286,9 @@ RTP 是实时传输协议，通过该协议打包 H.264 码流时，定义了三
 
 ## 参考
 - [H.264 百度百科](https://baike.baidu.com/item/H.264)
+- [H.264/AVC Video Coding Standard](http://iphome.hhi.de/wiegand/assets/pdfs/DIC_H264_07.pdf)
 - [RTP Payload Format for H.264 Video](https://datatracker.ietf.org/doc/html/rfc3984#section-1.3)
+- [H264视频压缩算法 [blog]](https://www.cnblogs.com/pjl1119/p/9914861.html)
 - [NAL Unit解析 [blog]](https://blog.csdn.net/weixin_36049506/article/details/96018124)
 - [H264码流格式解析及RTP打包规则整理 [blog]](https://blog.csdn.net/luoyaxing0812/article/details/111352155)
+- [视频和视频帧：H264编码格式整理 [blog]](https://zhuanlan.zhihu.com/p/71928833)
