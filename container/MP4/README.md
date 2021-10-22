@@ -36,8 +36,8 @@ aligned(8) class FullBox(unsigned int(32) boxtype, unsigned int(8) v, bit(24) f)
 ```
 
 综上，mp4的文件格式如下图所示：
-![mp4文件格式](./docs/images/mp4-format.png)
 
+![mp4文件格式](./docs/images/mp4-format.png)
 
 ## MP4 盒子类型
 |类型10|  |  |  |  |  |重要性|章节|描述|
