@@ -100,10 +100,9 @@ export default class RTP {
 
     // 扩展头解析
     if (this.extension === 1) {
-      const identifier = bytes.getUint16(offset);
-       // 单位字节，长度指扩展项中的32bit的个数，所以要*4
-      const length = bytes.getUint16(offset + 2) * 4;
-      offset += 4;
+      const identifier = bytes.getUint16(offset); offset += 2;
+      // 单位字节，长度指扩展项中的32bit的个数，所以要*4
+      const length = bytes.getUint16(offset) * 4; offset += 2;
       this.headerExtension = {
         identifier,
         length,
