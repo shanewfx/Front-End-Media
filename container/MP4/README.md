@@ -1,7 +1,7 @@
 ## MP4 (MPEG-4 Part 14)
 
 ## 前言
-MP4 是 MPEG-4 标准中第14部分，即 [MPEG-4 Part 14](http://www.telemidia.puc-rio.br/~rafaeldiniz/public_files/normas/ISO-14496/ISO_IEC_14496-14_2003_PDF_version_(en).pdf)，是一种常见的音视频容器格式，由国际标准化组织（ISO）和国际电工委员会（IEC）下属的“动态图像专家组”（Moving Picture Experts Group，即MPEG）制定，扩展名常为 `.mp4`。MPEG-4 Part 14 是更通用的 [ISO / IEC 14496-12:2004(Part 14: MP4 file format)](http://www.telemidia.puc-rio.br/~rafaeldiniz/public_files/normas/ISO-14496/ISO_IEC_14496-14_2003_PDF_version_(en).pdf) 的一个实例，他们的关系如下图：
+MP4 是 MPEG-4 标准中第14部分，即 [MPEG-4 Part 14](./docs/lib/part14.pdf)，是一种常见的音视频容器格式，由国际标准化组织（ISO）和国际电工委员会（IEC）下属的“动态图像专家组”（Moving Picture Experts Group，即MPEG）制定，扩展名常为 `.mp4`。MPEG-4 Part 14 是更通用的 [MPEG-4 Part12(ISO base media file format, ISOBMFF)](./docs/lib/part12.pdf) 的一个实例，Part12 定义了容器格式的通用结构，而 Part14 细化描述了用于存储 MPEG-4 内容的容器格式，他们的关系如下图：
 
 ![关系](./docs/images/relations.png)
 
@@ -147,7 +147,7 @@ function FullBox (type: string, version: number, flags: number, ...payloads: Uin
 接下来用 JS 去实现不同 mp4 box。
 
 ### ftyp
-ftyp 是 `File Type Box` 的简写，它描述了该 mp4 的解码标准，如解码版本、兼容格式等。通常 ftyp 都是放在 mp4 等开头。格式如下：
+`ftyp` 是 `File Type Box` 的简写，它描述了该 mp4 的解码标准，如解码版本、兼容格式等。通常 ftyp 都是放在 mp4 等开头。格式如下：
 ```cpp
 aligned(8) class FileTypeBox
   extends Box(‘ftyp’) {
@@ -193,14 +193,14 @@ function ftyp (
 ```
 
 ### moov
-moov 是 `Movie Box` 的缩写，它本身并不具备有用信息，但子盒子中包含了媒体播放所需的元数据，如视频的编码等级、分辨率，音频的声道、采样率等。格式如下：
+`moov` 是 `Movie Box` 的缩写，它本身并不具备有用信息，但子盒子中包含了媒体播放所需的元数据，如视频的编码等级、分辨率，音频的声道、采样率等。格式如下：
 ```cpp
 aligned(8) class MovieBox extends Box(‘moov’){ }
 ```
 次级盒子主要有：**mvhd**、**trak**、**mvex**
 
 ### moov::mvhd
-mvhd 是 `MovieHeaderBox` 的缩写，描述了媒体文件的整体信息，如创建时间、文件时长等。格式如下：
+`mvhd` 是 `MovieHeaderBox` 的缩写，描述了媒体文件的整体信息，如创建时间、文件时长等。格式如下：
 ```cpp
 aligned(8) class MovieHeaderBox extends FullBox(‘mvhd’, version, 0) {
   if (version==1) {
@@ -278,14 +278,14 @@ function mvhd (timescale: number, duration: number) {
 ```
 
 ### moov::trak
-trak 是 `Track Box` 的缩写，它是容器盒子，其次级盒子中包含了单个媒体轨道（track）的描述信息。格式如下：
+`trak` 是 `Track Box` 的缩写，它是容器盒子，其次级盒子中包含了单个媒体轨道（track）的描述信息。格式如下：
 ```cpp
 aligned(8) class TrackBox extends Box(‘trak’) {}
 ```
 次级盒子主要有：**tkhd**、**mdia** 等。
 
 ### moov::trak::tkhd
-tkhd 是 `Track Header Box` 的缩写，它包含了单个媒体轨道的描述信息。格式如下：
+`tkhd` 是 `Track Header Box` 的缩写，它包含了单个媒体轨道的描述信息。格式如下：
 ```cpp
 aligned(8) class TrackHeaderBox
   extends FullBox(‘tkhd’, version, flags){
@@ -374,8 +374,405 @@ function tkhd (track: IBoxTrack) {
 }
 ```
 
+### moov::trak::mdia
+`mdia` 是 `Media Box` 的缩写，是一个container box，里面包含了该track内的所有媒体信息。格式如下：
+```cpp
+aligned(8) class MediaBox extends Box(‘mdia’) {}
+```
+次级盒子主要有：**mdhd**、**hdlr**、**minf** 等。
+
+### moov::trak::mdia::mdhd
+ mdhd 是 `Media Header Box` 的缩写，包含了媒体特征相关信息。格式如下：
+```cpp
+aligned(8) class MediaHeaderBox extends FullBox(‘mdhd’, version, 0) {
+  if (version==1) {
+    unsigned int(64) creation_time;
+    unsigned int(64) modification_time;
+    unsigned int(32) timescale;
+    unsigned int(64) duration;
+  } else { // version==0
+    unsigned int(32) creation_time;
+    unsigned int(32) modification_time;
+    unsigned int(32) timescale;
+    unsigned int(32) duration;
+  }
+  bit(1) pad = 0;
+  unsigned int(5)[3] language; // ISO-639-2/T language code
+  unsigned int(16) pre_defined = 0;
+} 
+```
+上述字段中，language 表明当前媒体的语言，由三个小写字母组成（如zho-中文，eng-英语，und-未定义等），每个字符被压缩为其 `ASCII` 值和 `0x60` 之间的差值，每个字符占 5bits。如：und 的 ASCII 为 117、110、100，与 0x60 的差为 21、14、4，则 language 的值为 (21 << 10) + (14 << 5) + 4 = **0x55C4**。
+
+JS 实现方式：
+```typescript
+function mdhd ({
+  timescale,
+  duration
+}: IBoxTrack) {
+  return FullBox(
+    'mdhd', 0, 0,
+    new Uint8Array([
+      0x00, 0x00, 0x00, 0x00, // creation_time
+      0x00, 0x00, 0x00, 0x00, // modification_time
+      (timescale >> 24) & 0xFF,
+      (timescale >> 16) & 0xFF,
+      (timescale >>  8) & 0xFF,
+      timescale & 0xFF, // timescale
+      (duration >> 24),
+      (duration >> 16) & 0xFF,
+      (duration >>  8) & 0xFF,
+      duration & 0xFF, // duration
+      0x55, 0xc4, // 'und' language (undetermined)
+      0x00, 0x00
+    ])
+  );
+}
+```
+
+### moov::trak::mdia::hdlr
+`hdlr` 是 `Handler Box` 的缩写，用于设置不同 track 的处理方式。格式如下：
+```cpp
+aligned(8) class HandlerBox extends FullBox(‘hdlr’, version = 0, 0) {
+  unsigned int(32) pre_defined = 0;
+  unsigned int(32) handler_type;
+  const unsigned int(32)[3] reserved = 0;
+  string name;
+}
+```
+上述字段的含义如下：
+- handler_type 指 track 的处理类型，如：
+  - vide：指 Video Track
+  - soun: 指 Audio Track
+- name 自定义名称，以 0x00 结尾的字符串。
+
+JS 实现方式：
+```typescript
+function hdlr (track: IBoxTrack) {
+  const type = track.isVideo
+    ? [0x76, 0x69, 0x64, 0x65]    // 'vide'
+    : [0x73, 0x6f, 0x75, 0x6e];   // 'soun'
+
+  const name = track.isVideo
+    ? string2buffer('Video Handler')
+    : string2buffer('Audio Handler');
+
+  return FullBox(
+    'hdlr', 0, 0,
+    new Uint8Array([
+      0x00, 0x00, 0x00, 0x00, // pre_defined
+      ...type,                // handler_type
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, // reserved
+      ...name, 0x00           // name：a null-terminated string
+    ])
+  );
+}
+ ```
+
+### moov::trak::mdia::minf
+`minf` 是 `Media Information Box` 的缩写，是一个 container box，内部包含了当前 track 中所有的媒体特征信息。定义如下：
+```cpp
+aligned(8) class MediaInformationBox extends Box(‘minf’) {}
+```
+次级盒子主要有：**\*mhd**（如vmhd/smhd/hmhd/nmhd）、**dinf**、**stbl**。
+
+### moov::trak::mdia::minf::*mhd
+媒体信息头（ `Media Information Header Boxes`）在不同类型的 track 中都不一样，比如 vmhd(Video Media Header Box)、smhd(Sound Media Header Box)、hmhd(Hint Media Header Box)、nmhd(Null Media Header Box) 等。
+
+ `vmhd` 的定义如下：
+```cpp
+aligned(8) class VideoMediaHeaderBox
+  extends FullBox(‘vmhd’, version = 0, 1) {
+  template unsigned int(16) graphicsmode = 0; // copy, see below
+  template unsigned int(16)[3] opcolor = {0, 0, 0};
+} 
+```
+`smhd` 的定义如下：
+```cpp
+aligned(8) class SoundMediaHeaderBox
+  extends FullBox(‘smhd’, version = 0, 0) {
+  template int(16) balance = 0;
+  const unsigned int(16) reserved = 0;
+} 
+```
+
+### moov::trak::mdia::minf::dinf
+`dinf` 是 `Data Information Box` 的缩写，它是一个 container box，定义了媒体信息在 track 中的位置。定义如下：
+```cpp
+aligned(8) class DataInformationBox extends Box(‘dinf’) {}
+```
+次级盒子为 **dref** 。
+
+### moov::trak::mdia::minf::dinf::dref
+`dref` 是 `Data Reference Box` 的缩写，它包含一个数据引用表（通常为URL），指定了媒体数据的位置。格式如下：
+```cpp
+aligned(8) class DataReferenceBox
+  extends FullBox(‘dref’, version = 0, 0) {
+  unsigned int(32) entry_count;
+  for (i=1; i • entry_count; i++) { entry_count; i++) {
+    DataEntryBox(entry_version, entry_flags) data_entry;
+  }
+}
+```
+上述的 `DataEntryBox` 指 `DataEntryUrlBox` 或 `DataEntryUrnBox`，定义见下。
+```cpp
+aligned(8) class DataEntryUrlBox (bit(24) flags)
+  extends FullBox(‘url ’, version = 0, flags) {
+  string location;
+}
+aligned(8) class DataEntryUrnBox (bit(24) flags)
+  extends FullBox(‘urn ’, version = 0, flags) {
+  string name;
+  string location;
+} 
+```
+其中 entry_flags 为 `0x00000x` 时，表示媒体数据和包含此引用的 moov box 位于同一文件。所以 JS 实现如下即可：
+```typescript
+function dref () {
+  return FullBox(
+    'dref', 0, 0,
+    new Uint8Array([0x00, 0x00, 0x00, 0x01]), // entry_count 
+    FullBox('url ', 0, 1)
+  );
+}
+```
+
+### moov::trak::mdia::minf::stbl
+`stbl` 是 `Sample Table Box` 的缩写，是一个容器盒子，表明了当前track中媒体数据的时间和索引信息等。定义如下：
+```cpp
+aligned(8) class SampleTableBox extends Box(‘stbl’) { }
+```
+次级盒子主要有：**stsd**、**stts**、**stsc**、**stsz**、**stco** 等。
+
+### moov::trak::mdia::minf::stbl::stsd
+`stsd` 是 `Sample Description Box` 的缩写，存储了编码类型和初始化解码器需要的信息，不同类型的轨道、不同的媒体格式都有着不一样的定义。定义如下：
+```cpp
+aligned(8) class SampleDescriptionBox (unsigned int(32) handler_type)
+  extends FullBox('stsd', 0, 0){
+  int i ;
+  unsigned int(32) entry_count;
+  for (i = 1 ; i <= entry_count ; i++){
+    switch (handler_type){
+      case ‘soun’: // for audio tracks
+        AudioSampleEntry();
+        break;
+      case ‘vide’: // for video tracks
+        VisualSampleEntry();
+        break;
+      case ‘hint’: // Hint track
+        HintSampleEntry();
+        break;
+    }
+  }
+} 
+```
+JS 实现方式如下（只考虑了视频和音频）：
+```typescript
+function stsd (track: IBoxTrack) {
+  const sampleEntryBox = track.isVideo
+    ? VisualSampleEntryBox(track)
+    : AudioSampleEntryBox(track);
+  
+  return FullBox(
+    'stsd', 0, 0,
+    new Uint8Array([0x00, 0x00, 0x00, 0x01]), // entry_count
+    sampleEntryBox
+  );
+}
+```
+上述中 `xxxxSampleEntry` 在不同的编码格式中都有不同的格式，首先他们都继承抽象类 `SampleEntry` ，定义如下：
+```cpp
+aligned(8) abstract class SampleEntry (unsigned int(32) format)
+  extends Box(format){
+  const unsigned int(8)[6] reserved = 0;
+  unsigned int(16) data_reference_index;
+}
+```
+上述字段的含义如下：
+- format 指视频或音频的编码格式，如 aac 音频的编码格式为 `mp4a`，AVC-1/H.264 视频的编码格式为 `avc1`；
+- data_reference_index 利用这个索引可以检索与当前 sample description 关联的数据。数据引用存储在 dref box。
+
+对于视频轨道，需要按 `VisualSampleEntry` 定义，是各种编码格式（H264、H265）的基类，*ISO/IEC 14496-12** 只定义这个基类，具体编码格式的定义在其他文档中定义，如 H264 的定义在 [ISO/IEC 14496-15](./docs/lib/part15.pdf) 中为 `AVCSampleEntry`（下文会详细介绍）。`VisualSampleEntry` 定义如下：
+```cpp
+class VisualSampleEntry(codingname) extends SampleEntry (codingname){
+  unsigned int(16) pre_defined = 0;
+  const unsigned int(16) reserved = 0;
+  unsigned int(32)[3] pre_defined = 0;
+  unsigned int(16) width;
+  unsigned int(16) height;
+  template unsigned int(32) horizresolution = 0x00480000; // 72 dpi
+  template unsigned int(32) vertresolution = 0x00480000; // 72 dpi
+  const unsigned int(32) reserved = 0;
+  template unsigned int(16) frame_count = 1;
+  string[32] compressorname;
+  template unsigned int(16) depth = 0x0018;
+  int(16) pre_defined = -1;
+}
+```
+上述字段的含义如下：
+- width、height 视频宽高；
+- horizresolution、vertresolution 每英寸的像素值(dpi)，[16.16]格式；
+- frame_count 每个sample中的视频帧数，默认是1。
+
+对于音频轨道，需要按 `AudioSampleEntry` 定义：
+```cpp
+class AudioSampleEntry(codingname) extends SampleEntry (codingname){
+  const unsigned int(32)[2] reserved = 0;
+  template unsigned int(16) channelcount = 2;
+  template unsigned int(16) samplesize = 16;
+  unsigned int(16) pre_defined = 0;
+  const unsigned int(16) reserved = 0 ;
+  template unsigned int(32) samplerate = {timescale of media}<<16;
+} 
+```
+上述字段的含义如下：
+- channelcount 音频通道个数；
+- samplesize 音频的采样位数；
+- samplerate 音频的采样率，[16.16]格式。
+
+### moov::trak::mdia::minf::stbl::stsd::avc1
+`AVCSampleEntry` 继承了 `VisualSampleEntry` ，构造时 codingname 为 `avc1`。定义如下：
+```cpp
+class AVCSampleEntry() extends VisualSampleEntry (‘avc1’){
+  AVCConfigurationBox config;
+  MPEG4BitRateBox (); // optional
+  MPEG4ExtensionDescriptorsBox (); // optional
+}
+```
+
+H264 编码格式，其 AVCSampleEntry 的 JS 实现方式如下：
+```typescript
+function VisualSampleEntryBox (track: IBoxTrack) {
+  const { width, height, format } = track;
+  const extraBoxes = getExtraEntryBoxs(track);
+
+  return Box(
+    format,
+    new Uint8Array([
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+      0x00, 0x01, // data_reference_index
+      0x00, 0x00, // pre_defined
+      0x00, 0x00, // reserved
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, // pre_defined
+      (width >> 8) & 0xff, width & 0xff, // width
+      (height >> 8) & 0xff, height & 0xff, // height
+      0x00, 0x48, 0x00, 0x00, // horiz_reslution
+      0x00, 0x48, 0x00, 0x00, // vert_resolution
+      0x00, 0x00, 0x00, 0x00, // reserved
+      0x00, 0x01, // frame_count
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, // compressorname 32 bytes
+      0x00, 0x18, // depth 0x0018
+      0xff, 0xff  // pre_defined -1
+    ]),
+    ...extraBoxes
+  );
+}
+
+function getExtraEntryBoxs (track: IBoxTrack) {
+  let boxes: Uint8Array[] = [];
+  switch (track.format) {
+    case 'avc1':
+      boxes.push(avcC(track));
+      boxes.push(brtr());
+      break;
+    case ...
+  }
+  return boxes;
+}
+```
+
+### moov::trak::mdia::minf::stbl::stsd::avc1::avcC
+`avcC` 是 `AVC Configuration Box` 的缩写，
+```cpp
+class AVCConfigurationBox extends Box(‘avcC’) {
+  AVCDecoderConfigurationRecord() AVCConfig;
+}
+
+aligned(8) class AVCDecoderConfigurationRecord {
+  unsigned int(8) configurationVersion = 1;
+  unsigned int(8) AVCProfileIndication;
+  unsigned int(8) profile_compatibility;
+  unsigned int(8) AVCLevelIndication;
+  bit(6) reserved = ‘111111’b;
+  unsigned int(2) lengthSizeMinusOne;
+  bit(3) reserved = ‘111’b;
+  unsigned int(5) numOfSequenceParameterSets;
+  for (i=0; i< numOfSequenceParameterSets; i++) {
+    unsigned int(16) sequenceParameterSetLength ;
+    bit(8*sequenceParameterSetLength) sequenceParameterSetNALUnit;
+  }
+  unsigned int(8) numOfPictureParameterSets;
+  for (i=0; i< numOfPictureParameterSets; i++) {
+    unsigned int(16) pictureParameterSetLength;
+    bit(8*pictureParameterSetLength) pictureParameterSetNALUnit;
+  }
+  if( profile_idc == 100 || profile_idc == 110 ||
+    profile_idc == 122 || profile_idc == 144 )
+  {
+    bit(6) reserved = ‘111111’b;
+    unsigned int(2) chroma_format;
+    bit(5) reserved = ‘11111’b;
+    unsigned int(3) bit_depth_luma_minus8;
+    bit(5) reserved = ‘11111’b;
+    unsigned int(3) bit_depth_chroma_minus8;
+    unsigned int(8) numOfSequenceParameterSetExt;
+    for (i=0; i< numOfSequenceParameterSetExt; i++) {
+      unsigned int(16) sequenceParameterSetExtLength;
+      bit(8*sequenceParameterSetExtLength) sequenceParameterSetExtNALUnit;
+    }
+  }
+}
+```
+
+### moov::trak::mdia::minf::stbl::stsd::avc1::brtr
+`brtr` 是 `MPEG4 Bit Rate Box` 的缩写，定义如下：
+```cpp
+class MPEG4BitRateBox extends Box(‘btrt’){
+  unsigned int(32) bufferSizeDB;
+  unsigned int(32) maxBitrate;
+  unsigned int(32) avgBitrate;
+} 
+```
+
+### moov::trak::mdia::minf::stbl::stts
+
+### moov::trak::mdia::minf::stbl::stsc
+
+### moov::trak::mdia::minf::stbl::stsz
+
+### moov::trak::mdia::minf::stbl::stco
+
+### moov::mvex
+
+### moov::mvex::trex
+
+### moof
+
+
+### moof::mfhd
+
+### moof::traf
+
+### moof::traf::tfhd
+
+### moof::traf::tfdt
+
+### moof::traf::trun
+
+### moof::traf::sdtp
+
 # 参考
-- [Part 12: ISO base media file format](https://sce.umkc.edu/faculty-sites/lizhu/teaching/2018.fall.video-com/ref/mp4.pdf)
-- [Part 14: MP4 file format](http://www.telemidia.puc-rio.br/~rafaeldiniz/public_files/normas/ISO-14496/ISO_IEC_14496-14_2003_PDF_version_(en).pdf)
+- [Part 12: ISO base media file format](./docs/lib/part12.pdf)
+- [Part 14: MP4 file format](./docs/lib/part14.pdf)
 - [MP4文件格式入门【blog】](https://www.imooc.com/article/313004)
 - [mp4文件格式解析【blog】](https://www.jianshu.com/p/529c3729f357)
